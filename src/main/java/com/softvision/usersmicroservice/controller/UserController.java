@@ -20,6 +20,9 @@ public class UserController {
     @Autowired
     private UserService service;
 
+
+
+
     @PostMapping(path = "/add")
     public @ResponseBody String addNewUser(@RequestParam String firstName, @RequestParam String lastName,
                                            @RequestParam String email, @RequestParam String password) {
