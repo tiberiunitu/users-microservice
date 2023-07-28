@@ -1,6 +1,7 @@
 package com.softvision.usersmicroservice.controller;
 import com.softvision.usersmicroservice.dto.UserDTO;
-import com.softvision.usersmicroservice.repo.UserRepository;
+import javax.ws.rs.*;
+
 import com.softvision.usersmicroservice.service.UserService;
 import com.softvision.usersmicroservice.entity.User;
 import jakarta.persistence.EntityNotFoundException;
@@ -10,96 +11,91 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping(path="/demo")
+@RequestMapping(path="/users")
 public class UserController {
-    @Autowired
-    private UserRepository userRep;
+
     @Autowired
     private UserService service;
-
-    @PostMapping(path = "/add")
-    public @ResponseBody String addNewUser(@RequestParam String firstName, @RequestParam String lastName,
-                                           @RequestParam String email, @RequestParam String password) {
-        User u = new User();
-        u.setFirstName(firstName);
-        u.setLastName(lastName);
-        u.setEmail(email);
-        u.setPassword(password);
-        //it gives me error if I don't have try catch or if is not commented
-
-        try {
-            userRep.save(u);
-        } catch (Exception e) {
-            e.printStackTrace();
-
-        }
-
-        return "Saved";
+    public UserController(UserService service) {
+        this.service = service;
     }
 
-    //there is an error in return statement regarding ?? userid I guess
-    @GetMapping(path = "/users")
+
+    @PostMapping(path = "/add", consumes="application/json", produces="application/json")
+    public @ResponseBody ResponseEntity<UserDTO> addNewUser(@RequestBody UserDTO dto) {
+        User savedUser = service.save(dto);
+
+        if (savedUser != null) {
+            return new ResponseEntity<>(dto, HttpStatus.CREATED);
+        } else {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+    @GetMapping(path = "/getUsers")
     public ResponseEntity<List<UserDTO>> getAllUsers() {
-        try {
-            List<User> users = userRep.findAll();
-            List<UserDTO> userlistdto = users.stream()
-                    .map(user -> {
-                        UserDTO dto = new UserDTO();
-                        dto.setEmail(user.getEmail());
-                        dto.setPassword(user.getPassword());
-                        return dto;
-                    })
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(userlistdto);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        List<UserDTO> users = service.findAll();
+        if (users == null || users.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.ok(users);
         }
     }
-    @GetMapping(path="/GetMeTheUser")
-    public Long findUserByEmailAndPassword(String email, String password) {
-        User user = userRep.findByEmail(email).orElse(null);
 
-        if (user != null && user.getPassword().equals(password)) {
-            return user.getUserid();
+    @GetMapping(path="/getMeTheUser")
+    public ResponseEntity<Long>  findUserByEmailAndPassword(@RequestParam String email, @RequestParam String password) {
+        Long userId = service.findUserIdByEmailAndPassword(email, password);
+        if (userId != null) {
+            ResponseEntity.ok(HttpStatus.resolve(201));
+//            return userId;
+            return ResponseEntity.status(HttpStatus.CREATED).body(userId);
+        } else {
+           return  ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+
         }
-
-        return null;
     }
 
 
-    @PutMapping(path = "/update")
-    public ResponseEntity<String> updateUserByEmailAndPassword(
-            @RequestParam("email") String email,
-            @RequestParam("password") String password,
-            @RequestParam("newFirstName") String newFirstName,
-            @RequestParam("newLastName") String newLastName,
-            @RequestParam("newEmail") String newEmail,
-            @RequestParam("newPassword") String newPassword
-    ) {
+
+        @PutMapping(path = "/update")
+    public ResponseEntity<UserDTO> updateUserByEmailAndPassword(
+            @QueryParam("email") String email,
+            @QueryParam("password") String password,
+            @RequestBody UserDTO userDTO) {
         try {
-            service.updateUserByEmailAndPassword(email, password, newFirstName, newLastName, newEmail, newPassword);
-            return ResponseEntity.ok("Updated!");
+            var newUser = service.updateUserByEmailAndPassword(email, password, userDTO);
+            if(newUser != null){
+                return ResponseEntity.status(HttpStatus.CREATED).body(newUser);
+            } else {
+                return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+            }
         } catch (EntityNotFoundException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
      @DeleteMapping(path = "/delete")
-        public ResponseEntity<String> deleteUserByEmailAndPassword(
+        public ResponseEntity<UserDTO> deleteUserByEmailAndPassword(
                 @RequestParam("email") String email,
                 @RequestParam("password") String password) {
-            User user = service.findUserByEmailAndPassword(email, password);
 
-            if (user!= null) {
-                service.deleteUserById(user.getUserid());
-                return ResponseEntity.ok("Deleted");
-            } else {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials.");
-            }
-        }
+
+         try {
+             var user = service.findUserByEmailAndPassword(email, password);
+             if (user!=null){
+                 service.deleteUserById(user.getUserid());
+                 return ResponseEntity.status(HttpStatus.OK).build();
+             }
+             else {
+                 return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+             }
+
+         } catch (EntityNotFoundException e) {
+             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+         }
+     }
     }
 
 
