@@ -25,7 +25,7 @@ public class UserController {
 
     @PostMapping(path = "/add", consumes="application/json", produces="application/json")
     public @ResponseBody ResponseEntity<UserDTO> addNewUser(@RequestBody UserDTO dto) {
-        User savedUser = service.save(dto);
+        UserDTO savedUser = service.save(dto);
 
         if (savedUser != null) {
             return new ResponseEntity<>(dto, HttpStatus.CREATED);
