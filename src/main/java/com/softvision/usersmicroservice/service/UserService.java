@@ -3,11 +3,7 @@ import com.softvision.usersmicroservice.dto.UserDTO;
 import com.softvision.usersmicroservice.entity.User;
 import com.softvision.usersmicroservice.exceptions.UserNotFoundException;
 import com.softvision.usersmicroservice.repo.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -58,14 +54,22 @@ public class UserService {
         }
     }
 
-    public User save(UserDTO dto) {
+    public UserDTO save(UserDTO dto) {
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
         user.setPassword(dto.getPassword());
 
-        return rep.save(user);
+        User savedUser = rep.save(user);
+
+        UserDTO savedUserDTO = new UserDTO();
+        savedUserDTO.setEmail(savedUser.getEmail());
+        savedUserDTO.setFirstName(savedUser.getFirstName());
+        savedUserDTO.setLastName(savedUser.getLastName());
+        savedUserDTO.setPassword(savedUser.getPassword());
+
+        return savedUserDTO;
     }
 
 
